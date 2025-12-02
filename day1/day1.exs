@@ -4,22 +4,32 @@ defmodule FindPassword do
     |> File.stream!()
     |> Enum.map(&String.trim/1)
     |> Enum.map(&convert/1)
-    |> hit_zero(50, 0)
+    |> process(50, 0)
   end
 
-  defp hit_zero([], _pos, count), do: count
+  defp process([], _pos, count), do: count
 
-  defp hit_zero([h | t], pos, count) do 
-    full = abs(div(h, 100))
-    new_pos = Integer.mod(h + pos, 100)
-    crossed = crossed(h, new_pos, pos)
-    hit_zero(t, new_pos, count + full + crossed)
+  defp process([h | t], pos, count) do
+    {new_pos, passed} = rotate(pos, h, 0)
+    process(t, new_pos, count + passed)
   end
 
-  defp crossed(h, new_pos, pos) when h > 0 and new_pos < pos, do: 1
-  defp crossed(h, new_pos, pos) when h < 0 and new_pos > pos, do: 1
-  defp crossed(_h, _new_pos, _pos), do: 0
-  
-  defp convert(<<"L", num::binary>>), do: String.to_integer(num) * -1
+  defp rotate(pos, 0, count), do: {pos, count}
+
+  defp rotate(pos, h, count) when h > 0 do
+    new_pos = rem(pos + 1, 100)
+    rotate(new_pos, h - 1, count + crossed?(new_pos))
+  end
+
+  defp rotate(pos, h, count) when h < 0 do
+    new_pos = rem(pos - 1 + 100, 100)
+    rotate(new_pos, h + 1, count + crossed?(new_pos))
+  end
+
+  defp crossed?(0), do: 1
+  defp crossed?(_new_pos), do: 0
+
+  defp convert(<<"L", num::binary>>), do: -String.to_integer(num)
   defp convert(<<"R", num::binary>>), do: String.to_integer(num)
 end
+
