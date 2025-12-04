@@ -8,26 +8,29 @@ defmodule FindJoltage do
   
   defp process([], joltage), do: joltage
 
-  defp process([bank | rest], joltage) do
-    bank = 
-      bank 
-      |> String.graphemes() 
-      |> Enum.map(&String.to_integer/1)
-    
-    battery1 = 
-       bank 
-       |> Enum.slice(0..-2//1) 
-       |> Enum.max()
+  defp process([head | rest], joltage) do
+    bank = String.graphemes(head) 
+    battery = build_battery(bank, "", 12)
+    process(rest, joltage + battery)
+  end
+  
+  defp build_battery(_bank, battery, 0), do: String.to_integer(battery)
 
-    index = Enum.find_index(bank, fn x -> x == battery1 end)
+  defp build_battery(bank, battery, rem) 
+       when length(bank) == rem do
+    build_battery(bank, battery <> Enum.join(bank), 0) 
+  end
 
-    battery2 = 
+  defp build_battery(bank, battery, rem) do
+    len = length(bank)
+    cell = 
       bank 
-      |> Enum.slice(index + 1..length(bank)-1) 
+      |> Enum.slice(0..len - rem) 
       |> Enum.max()
 
-    battery = battery1 * 10 + battery2
+    index = Enum.find_index(bank, fn x -> x == cell end)
+    new_bank = Enum.slice(bank, index + 1, len) 
 
-    process(rest, joltage + battery)
+    build_battery(new_bank, battery <> cell, rem - 1)
   end
 end
