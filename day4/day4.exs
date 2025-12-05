@@ -19,29 +19,29 @@ defmodule PaperRoll do
 
   def count_accessible(grid) do
     Enum.reduce(grid, 0, fn { coord, char }, acc ->
-      count_cell(char, grid, coord, acc)
+      check_item(char, grid, coord, acc)
     end)
   end
 
-  defp count_cell("@", grid, coord, acc),
-    do: count_roll(grid, coord, acc)
+  defp check_item("@", grid, coord, acc),
+    do: process_roll(grid, coord, acc)
 
-  defp count_cell(_, _grid, _coord, acc),
+  defp check_item(_, _grid, _coord, acc),
     do: acc
 
-  defp count_roll(grid, coord, acc) do
+  defp process_roll(grid, coord, acc) do
     roll_count =
       coord
       |> neighbors()
       |> Enum.count(fn c -> Map.get(grid, c) == "@" end)
 
-    check_roll(roll_count, acc)
+    apply_roll_rule(roll_count, acc)
   end
 
-  defp check_roll(roll_count, acc) when roll_count < 4,
+  defp apply_roll_rule(roll_count, acc) when roll_count < 4,
     do: acc + 1
 
-  defp check_roll(_roll_count, acc),
+  defp apply_roll_rule(_roll_count, acc),
     do: acc
 
   defp neighbors({ x, y }) do
