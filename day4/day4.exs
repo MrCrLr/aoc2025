@@ -14,11 +14,22 @@ defmodule PaperRoll do
         Map.put(acc, { x, y }, char)
       end)
     end)
-    |> count_accessible()
+    |> total_removed()
     |> elem(1)
   end
 
-  def count_accessible(grid) do
+  defp total_removed(grid), do: _total_removed(grid, 0)
+  defp _total_removed(grid, total) do
+    case count_accessible(grid) do
+      { new_grid, 0 } -> 
+        { new_grid, total }
+
+      { new_grid, removed } ->
+        _total_removed(new_grid, total + removed)
+    end
+  end
+
+  defp count_accessible(grid) do
     { final_grid, count } =
       Enum.reduce(grid, { grid, 0 }, fn { coord, char }, { g, acc } ->
         check_item(char, g, coord, acc)
