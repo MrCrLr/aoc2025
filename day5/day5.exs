@@ -1,13 +1,15 @@
 defmodule FreshItems do
   def run(file) do
-    [ range_lines, int_lines ] =
+    { range_lines, int_lines } =
       File.stream!(file)
       |> Stream.map(&String.trim/1)
       |> Enum.split_while(&(&1 != ""))
+
     digits = 
       int_lines
-      Enum.drop_while(&(&1 == ""))
-      Enum.map(&String.to_integer/1)
+      |> Enum.drop_while(&(&1 == ""))
+      |> Enum.map(&String.to_integer/1)
+
     ranges = 
       range_lines
       |> Enum.map(fn line ->
@@ -15,7 +17,12 @@ defmodule FreshItems do
         String.to_integer(a)..String.to_integer(b)
       end)
 
-    %{ digits: digits, ranges: ranges }
+    count =
+      Enum.count(digits, fn d ->
+        Enum.any?(ranges, fn r -> d in r end)
+      end)
+
+    %{digits: digits, ranges: ranges, count: count}
   end
 end
 
