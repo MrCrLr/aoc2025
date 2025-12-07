@@ -14,6 +14,25 @@ defmodule MathHomework do
     IO.inspect(digits, label: "Digits")
     IO.inspect(operations, label: "Operations")
     IO.inspect(pivot, label: "Pivot")
+
+    result = evaluate(pivot)
+    IO.inspect(result, label: "Final Result")
+  end
+
+  defp evaluate(pivot) do
+    pivot
+    |> Enum.map(fn
+      {:+, values} ->
+        values
+        |> Enum.map(&String.to_integer/1)
+        |> Enum.sum()
+
+      {:*, values} ->
+        values
+        |> Enum.map(&String.to_integer/1)
+        |> Enum.product()
+    end)
+    |> Enum.sum()
   end
 
   defp build_pivot_map(digits, operations) do
