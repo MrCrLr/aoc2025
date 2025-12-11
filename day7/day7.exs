@@ -26,16 +26,18 @@ defmodule Teleporter do
   end
 
   defp scan_row([h | t], {i, beam, acc}) when h == "^" do
-    { state, _worlds } = Map.get(beam, i)
-    max_worlds = get_max_worlds(beam)
+    { state, worlds } = Map.get(beam, i)
+    # num_worlds = get_max_worlds(beam)
     IO.inspect(beam)
     case state == true do
       true -> 
+        { _state, worlds_left }  = Map.get(beam, i - 1, {true, worlds})
+        { _state, worlds_right } = Map.get(beam, i + 1, {true, worlds})
         new_beam = 
           beam
-          |> Map.put(i - 1, {true, max_worlds + 1})
-          |> Map.put(i, {false, max_worlds})
-          |> Map.put(i + 1, {true, max_worlds + 2})
+          |> Map.put(i - 1, {true, worlds_left + 1})
+          |> Map.put(i, {false, worlds})
+          |> Map.put(i + 1, {true, worlds_right + 2})
 
         scan_row(t, {i + 1, new_beam, acc + 1})
 
@@ -45,7 +47,7 @@ defmodule Teleporter do
   end
 
   defp scan_row([h | _t], {i, beam, acc}) when h == "S" do
-    new_beam = Map.put(beam, i, {true, 0})
+    new_beam = Map.put(beam, i, {true, 1})
     { new_beam, acc }
   end
 
