@@ -2,7 +2,7 @@ defmodule XYZ do
   @k 1000
 
   def run(file) do
-    graph =
+    points =
       File.stream!(file)
       |> Enum.map(&String.trim_trailing/1)
       |> Enum.map(fn line ->
@@ -12,16 +12,14 @@ defmodule XYZ do
       end)
       |> Enum.map(&List.to_tuple/1)
     
-    len = length(graph)
-    # IO.inspect(graph)
-    distance_pairs = 
-      get_distances(graph, {0, 0}, len, [])
+    edge_pairs = 
+      get_edges(points)
 
     sorted_edges = 
-      clean_and_sort(distance_pairs)
+      clean_and_sort(edge_pairs)
 
     circuits = 
-      build_circuits(graph, sorted_edges, @k)
+      build_circuits(points, sorted_edges, @k)
 
     circuits
     |> Map.values()
@@ -30,16 +28,13 @@ defmodule XYZ do
     |> Enum.product()
   end
 
-  defp build_circuits(graph, sorted_edges, limit) do
-    {parents, sizes} = init_sets(graph)
-    # IO.inspect(parents)
-    # IO.inspect(sizes)
+  defp build_circuits(points, sorted_edges, limit) do
+    {parents, sizes} = init_sets(points)
+
     {_, final_sizes} = 
       sorted_edges
       |> Enum.take(limit)
-      |> Enum.reduce({parents, sizes}, fn {{i, j}, _dist}, state ->
-        a = Enum.at(graph, i)
-        b = Enum.at(graph, j)
+      |> Enum.reduce({parents, sizes}, fn {{a, b}, _}, state ->
         union(state, a, b)
       end)
 
@@ -48,83 +43,63 @@ defmodule XYZ do
 
   # ---------- Union-Find (Disjoint Set Union) ---------- #
 
-  defp init_sets(graph) do
-    parents = Map.new(graph, fn p -> {p, p} end)
-    sizes   = Map.new(graph, fn p -> {p, 1} end)
+  defp init_sets(points) do
+    parents = 
+      points
+      |> Enum.with_index()
+      |> Map.new(fn {_p, i} -> {i, i} end)
+
+    sizes = 
+      parents
+      |> Map.keys()
+      |> Map.new(fn i -> {i, 1} end)
+
     {parents, sizes}
   end
 
   defp find(parents, x) do
-    case Map.fetch!(parents, x) do
-      ^x ->
-        {x, parents}
-      parent ->
-        {root, parents} = find(parents, parent)
-        {root, Map.put(parents, x, root)}
+    case parents[x] do
+      ^x -> x
+      parent -> find(parents, parent)
     end
   end
 
   defp union({parents, sizes}, a, b) do
-    {ra, parents} = find(parents, a)
-    {rb, parents} = find(parents, b)
+    ra = find(parents, a)
+    rb = find(parents, b)
 
-    union_roots({parents, sizes}, ra, rb)
+    cond do
+      ra == rb ->
+        {parents, sizes}
+
+      sizes[ra] >= sizes[rb] ->
+        {
+          Map.put(parents, rb, ra),
+          sizes
+          |> Map.put(ra, sizes[ra] + sizes[rb])
+          |> Map.delete(rb)
+        }
+
+      true ->
+        union({parents, sizes}, b, a)
+    end
   end
 
-  defp union_roots(state, root, root), do: state
-  
-  defp union_roots({parents, sizes}, ra, rb) do
-    sa = Map.fetch!(sizes, ra)
-    sb = Map.fetch!(sizes, rb)
+  # ---------- Utilities and Math  ---------- #
 
-    attach({parents, sizes}, ra, sa, rb, sb)
+  defp clean_and_sort(pairs) do 
+    pairs
+    |> Enum.uniq_by(fn {_pair, d} -> d end)
+    |> Enum.sort_by(fn {_pair, d} -> d end, :asc)
   end
 
-  defp attach({parents, sizes}, ra, sa, rb, sb) when sa >= sb do
-    parents = Map.put(parents, rb, ra)
-
-    sizes =
-      sizes
-      |> Map.put(ra, sa + sb)
-      |> Map.delete(rb)
-    {parents, sizes}
+  defp get_edges(points) do
+    for {p1, i} <- Enum.with_index(points),
+        {p2, j} <- Enum.with_index(points),
+        i < j do
+      {{i, j}, Geometry.distance(p1, p2)}
+    end
   end
-
-  defp attach(state, ra, sa, rb, sb) do
-        attach(state, rb, sb, ra, sa)
-  end
-
-  # ---------- Parse data and get distances ----------#
-
-  defp clean_and_sort(distance_pairs) do 
-    distance_pairs
-    |> Enum.uniq_by(fn {_coords, dist} -> dist end)
-    |> Enum.sort_by(fn {_coords, dist} -> dist end, :asc)
-  end
-
-  defp get_distances(_graph, {i, _j}, len, acc) when i == len, do: acc
-
-  defp get_distances(graph, {i, j}, len, acc) when j >= len do
-    get_distances(graph, {i + 1, 0}, len, acc)
-  end
-
-  defp get_distances(graph, {i, j}, len, acc) when i == j do
-    get_distances(graph, {i, j + 1}, len, acc)
-  end
-
-  defp get_distances(graph, {i, j} = coords, len, acc) do
-    a = Enum.at(graph, i)
-    b = Enum.at(graph, j) 
-
-    entry_value = Geometry.distance(a, b)
-
-    get_distances(
-      graph, 
-      {i, j + 1}, 
-      len, 
-      [{coords, entry_value} | acc]
-    )
-  end 
 end
 
 defmodule Geometry do
