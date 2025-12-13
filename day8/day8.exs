@@ -15,48 +15,83 @@ defmodule XYZ do
     distance_pairs = 
       get_distances(graph, {0, 0}, len, [])
 
-    sorted_distances = 
+    sorted_edges = 
       clean_and_sort(distance_pairs)
 
-    grouped_distances = 
-      create_groups(sorted_distances, 0, 0, [{:g1, []}])
+    circuits = 
+      build_circuits(graph, sorted_edges, 1000)
 
-    IO.inspect(grouped_distances)
-
+    circuits
+    |> Map.values()
+    |> Enum.sort(:desc)
+    |> Enum.take(3)
+    |> Enum.product()
   end
 
-  defp create_groups(sorted_distances, index, _count, acc) 
-       when index == length(sorted_distances), do: acc
-  defp create_groups(sorted_distances, 0, 0, acc) do
-    {{x, y}, _dist} = Enum.at(sorted_distances, 0)
-    create_groups(sorted_distances, 1, 1, Keyword.put(acc, :g1, [x, y]))
-  end
-  defp create_groups(sorted_distances, index, count, acc) do
-    {{x, y}, _dist} = Enum.at(sorted_distances, index)
+  defp build_circuits(graph, sorted_edges, limit) do
+    {parents, sizes} = init_sets(graph)
 
-    keys = Keyword.keys(acc)
-
-    matching_key = 
-      Enum.find(keys, fn key ->
-        values = Keyword.get(acc, key)
-        x in values or y in values
+    {_, final_sizes} = 
+      sorted_edges
+      |> Enum.take(limit)
+      |> Enum.reduce({parents, sizes}, fn {{i, j}, _dist}, state ->
+        a = Enum.at(graph, i)
+        b = Enum.at(graph, j)
+        union(state, a, b)
       end)
 
-    new_acc =
-      if matching_key do
-        Keyword.update!(acc, matching_key, fn values ->
-          Enum.uniq(values ++ [x, y])
-        end)
-      else
-        new_key = String.to_atom("g#{count + 1}")
-        Keyword.put(acc, new_key, [x, y])
-      end 
-
-    new_count =
-      if matching_key, do: count, else: count + 1
-
-    create_groups(sorted_distances, index + 1, new_count, new_acc)
+    final_sizes
   end
+
+  # ---------- Union-Find (Disjoint Set Union) ---------- #
+
+  defp init_sets(graph) do
+    parents = Map.new(graph, fn p -> {p, p} end)
+    sizes   = Map.new(graph, fn p -> {p, 1} end)
+    {parents, sizes}
+  end
+
+  defp find(parents, x) do
+    case Map.fetch!(parents, x) do
+      ^x ->
+        {x, parents}
+      parent ->
+        {root, parents} = find(parents, parent)
+        {root, Map.put(parents, x, root)}
+    end
+  end
+
+  defp union({parents, sizes}, a, b) do
+    {ra, parents} = find(parents, a)
+    {rb, parents} = find(parents, b)
+
+    union_roots({parents, sizes}, ra, rb)
+  end
+
+  defp union_roots(state, root, root), do: state
+  
+  defp union_roots({parents, sizes}, ra, rb) do
+    sa = Map.fetch!(sizes, ra)
+    sb = Map.fetch!(sizes, rb)
+
+    attach({parents, sizes}, ra, sa, rb, sb)
+  end
+
+  defp attach({parents, sizes}, ra, sa, rb, sb) when sa >= sb do
+    parents = Map.put(parents, rb, ra)
+
+    sizes =
+      sizes
+      |> Map.put(ra, sa + sb)
+      |> Map.delete(rb)
+    {parents, sizes}
+  end
+
+  defp attach(state, ra, sa, rb, sb) do
+        attach(state, rb, sb, ra, sa)
+  end
+
+  # ---------- Parse data and get distances ----------#
 
   defp clean_and_sort(distance_pairs) do 
     distance_pairs
