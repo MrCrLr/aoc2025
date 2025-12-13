@@ -1,4 +1,6 @@
 defmodule XYZ do
+  @k 1000
+
   def run(file) do
     graph =
       File.stream!(file)
@@ -11,7 +13,7 @@ defmodule XYZ do
       |> Enum.map(&List.to_tuple/1)
     
     len = length(graph)
-
+    # IO.inspect(graph)
     distance_pairs = 
       get_distances(graph, {0, 0}, len, [])
 
@@ -19,7 +21,7 @@ defmodule XYZ do
       clean_and_sort(distance_pairs)
 
     circuits = 
-      build_circuits(graph, sorted_edges, 1000)
+      build_circuits(graph, sorted_edges, @k)
 
     circuits
     |> Map.values()
@@ -30,7 +32,8 @@ defmodule XYZ do
 
   defp build_circuits(graph, sorted_edges, limit) do
     {parents, sizes} = init_sets(graph)
-
+    # IO.inspect(parents)
+    # IO.inspect(sizes)
     {_, final_sizes} = 
       sorted_edges
       |> Enum.take(limit)
