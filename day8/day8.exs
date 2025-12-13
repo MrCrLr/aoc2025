@@ -1,6 +1,4 @@
 defmodule XYZ do
-  @k 1000
-
   def run(file) do
     points =
       File.stream!(file)
@@ -18,27 +16,34 @@ defmodule XYZ do
     sorted_edges = 
       clean_and_sort(edge_pairs)
 
-    circuits = 
-      build_circuits(points, sorted_edges, @k)
+    {_, _, {i, j}} = 
+      build_circuits(points, sorted_edges)
 
-    circuits
-    |> Map.values()
-    |> Enum.sort(:desc)
-    |> Enum.take(3)
-    |> Enum.product()
+    {x1, _, _} = Enum.at(points, i)
+    {x2, _, _} = Enum.at(points, j)    
+
+    result = x1 * x2
+
+    IO.puts("The Product of the X coordinates of the") 
+    IO.puts("last two junction boxes equals: #{result}")
   end
 
-  defp build_circuits(points, sorted_edges, limit) do
+  defp build_circuits(points, sorted_edges) do
     {parents, sizes} = init_sets(points)
 
-    {_, final_sizes} = 
+    {final_parents, final_sizes, {a, b}} = 
       sorted_edges
-      |> Enum.take(limit)
-      |> Enum.reduce({parents, sizes}, fn {{a, b}, _}, state ->
-        union(state, a, b)
+      |> Enum.reduce_while({parents, sizes, nil}, fn {{a, b}, _}, {parents, sizes, _} ->
+        {curr_parents, curr_sizes} = union({parents, sizes}, a, b)
+        
+        if map_size(curr_sizes) == 1 do
+          {:halt, {curr_parents, curr_sizes, {a, b}}}
+        else
+          {:cont, {curr_parents, curr_sizes, {a, b}}}
+        end
       end)
 
-    final_sizes
+    {final_parents, final_sizes, {a, b}}
   end
 
   # ---------- Union-Find (Disjoint Set Union) ---------- #
